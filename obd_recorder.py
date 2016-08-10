@@ -7,7 +7,7 @@ import obd_sensors
 from datetime import datetime
 import time
 import getpass
-
+import os
 
 from obd_utils import scanSerial
 
@@ -95,7 +95,7 @@ class OBD_Recorder():
         
 username = getpass.getuser()  
 logitems = ["rpm", "speed", "throttle_pos", "load", "fuel_status"]
-o = OBD_Recorder('/home/'+username+'/pyobd-pi/log/', logitems)
+o = OBD_Recorder(os.path.dirname(os.path.realpath(__file__))+'/log/', logitems)
 o.connect()
 
 if not o.is_connected():
