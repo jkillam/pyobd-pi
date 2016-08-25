@@ -79,6 +79,7 @@ class OBDPort:
          par      = serial.PARITY_NONE  # parity
          sb       = 1                   # stop bits
          to       = SERTIMEOUT
+         protocol = 7
          self.ELMver = "Unknown"
          self.State = 1 #state SERIAL is 1 connected, 0 disconnected (connection failed)
          self.port = None
@@ -113,13 +114,23 @@ class OBDPort:
          debug_display(self._notify_window, 2, "atz response:" + self.ELMver)
          self.send_command("ate0")  # echo off
          debug_display(self._notify_window, 2, "ate0 response:" + self.get_result())
+         self.send_command("atsp3") # set protocol
+         debug_display(self._notify_window, 2, "atsp7 response:" + self.get_result())
+
+         time.sleep(1)
          self.send_command("0100")
          ready = self.get_result()
          
-         if(ready is None):
+         if(ready is None) or ready[10:13] == "...":
             self.State = 0
             return None
             
+         debug_display(self._notify_window, 2, "0100 response:" + ready)
+         self.send_command("0120")
+         ready = self.get_result()
+         debug_display(self._notify_window, 2, "0100 response:" + ready)
+         self.send_command("0140")
+         ready = self.get_result()
          debug_display(self._notify_window, 2, "0100 response:" + ready)
          return None
               

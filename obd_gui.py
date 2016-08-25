@@ -12,7 +12,7 @@ import wx
 import time
 from threading import Thread
 
-from obd_capture import OBD_Capture
+from obd_capture import Fake_OBD_Capture
 from obd_sensors import SENSORS
 from obd_sensors import *
 
@@ -33,7 +33,7 @@ class OBDConnection(object):
     """
     
     def __init__(self):
-        self.c = OBD_Capture()
+        self.c = Fake_OBD_Capture()
 
     def get_capture(self):
         return self.c
@@ -83,7 +83,7 @@ class OBDText(wx.TextCtrl):
         style = wx.TE_READONLY | wx.TE_MULTILINE
         wx.TextCtrl.__init__(self, parent, style=style)
 
-        self.SetBackgroundColour('#21211f')
+        self.SetBackgroundColour('#612121')
         self.SetForegroundColour(wx.WHITE)  
 
         font = wx.Font(12, wx.ROMAN, wx.NORMAL, wx.NORMAL, faceName="Monaco")
@@ -104,6 +104,7 @@ class OBDStaticBox(wx.StaticBox):
         Constructor.
         """
         wx.StaticBox.__init__(self, *args, **kwargs)
+        self.SetBackgroundColour('#612121')
 
     def OnPaint(self, event): 
         self.Paint(wx.PaintDC(self)) 
@@ -201,16 +202,18 @@ class OBDPanelGauges(wx.Panel):
 
         # Grid sizer
         nrows, ncols = 2, 3
-        vgap, hgap = 50, 50
+        vgap, hgap = 0, 0
         gridSizer = wx.GridSizer(nrows, ncols, vgap, hgap)
 
         # Create a box for each sensor
         for index, sensor in sensors:
-            
-            (name, value, unit) = self.port.sensor(index)
+            name = sensor.name
+            value = index * 2
+            unit = "index"
+            #(name, value, unit) = self.port.sensor(index)
 
             box = OBDStaticBox(self, wx.ID_ANY)
-            self.boxes.append(box)
+            #self.boxes.append(box)
             boxSizer = wx.StaticBoxSizer(box, wx.VERTICAL)
 
             # Text for sensor value 
@@ -218,7 +221,10 @@ class OBDPanelGauges(wx.Panel):
                 value = str("%.2f"%round(value, 3))                    
             t1 = wx.StaticText(parent=self, label=str(value), style=wx.ALIGN_CENTER)
             t1.SetForegroundColour('WHITE')
-            font1 = wx.Font(32, wx.ROMAN, wx.NORMAL, wx.NORMAL, faceName="Monaco")
+            #t1.StyleSetBackground(wx.stc.STC_STYLE_DEFAULT, (255,0,0))
+            numFontName = u'RobotoCondensed'
+            print type(numFontName)
+            font1 = wx.Font(32, wx.DECORATIVE, wx.NORMAL, wx.LIGHT, False, numFontName)
             t1.SetFont(font1)
             boxSizer.Add(t1, 0, wx.ALIGN_CENTER | wx.ALL, 20)
             boxSizer.AddStretchSpacer()
@@ -227,7 +233,7 @@ class OBDPanelGauges(wx.Panel):
             # Text for sensor name
             t2 = wx.StaticText(parent=self, label=unit+"\n"+name, style=wx.ALIGN_CENTER)
             t2.SetForegroundColour('WHITE')
-            font2 = wx.Font(13, wx.ROMAN, wx.NORMAL, wx.BOLD, faceName="Monaco")
+            font2 = wx.Font(13, wx.ROMAN, wx.NORMAL, wx.BOLD, faceName = numFontName)
             t2.SetFont(font2)
             boxSizer.Add(t2, 0, wx.ALIGN_CENTER | wx.ALL, 5)
             self.texts.append(t2)
@@ -235,7 +241,7 @@ class OBDPanelGauges(wx.Panel):
 
         # Add invisible boxes if necessary
         nsensors = len(sensors)
-        for i in range(6-nsensors):
+        for i in range(nrows*ncols-nsensors):
             box = OBDStaticBox(self)
             boxSizer = wx.StaticBoxSizer(box, wx.VERTICAL)
             self.boxes.append(box)
@@ -243,7 +249,7 @@ class OBDPanelGauges(wx.Panel):
             gridSizer.Add(boxSizer, 1, wx.EXPAND | wx.ALL)
            
         # Layout
-        boxSizerMain.Add(gridSizer, 1, wx.EXPAND | wx.ALL, 10)
+        boxSizerMain.Add(gridSizer, 1, wx.EXPAND | wx.ALL, 0)
         self.SetSizer(boxSizerMain)
         self.Refresh()
         self.Layout() 
@@ -255,12 +261,13 @@ class OBDPanelGauges(wx.Panel):
 
 
     def refresh(self, event):
+        print "refreshing"
         sensors = self.getSensorsToDisplay(self.istart)   
         
         itext = 0
         for index, sensor in sensors:
-
-            (name, value, unit) = self.port.sensor(index)
+            value = index
+            #(name, value, unit) = self.port.sensor(index)
             if type(value)==float:  
                 value = str("%.2f"%round(value, 3))                    
 
@@ -277,6 +284,7 @@ class OBDPanelGauges(wx.Panel):
         """
         Get data from 6 previous sensors in the list.
         """
+        print "onLeft"
         istart = self.istart-6 
         if istart<0: istart = 0
         self.istart = istart
@@ -286,6 +294,7 @@ class OBDPanelGauges(wx.Panel):
         """
         Get data from 6 next sensors in the list.
         """
+        print "onRight"
         istart = self.istart+6
         if istart<len(self.sensors):
             self.istart = istart
@@ -356,7 +365,7 @@ class OBDLoadingPanel(wx.Panel):
         self.textCtrl = OBDText(self)
         boxSizer.Add(self.textCtrl, 1, wx.EXPAND | wx.ALL, 92)
         self.SetSizer(boxSizer)
-        font3 = wx.Font(16, wx.ROMAN, wx.NORMAL, wx.NORMAL, faceName="Monaco")
+        font3 = wx.Font(16, wx.DECORATIVE, wx.NORMAL, wx.NORMAL, faceName="Monaco")
         self.textCtrl.SetFont(font3)
         self.textCtrl.AddText(" Opening interface (serial port)\n")     
         self.textCtrl.AddText(" Trying to connect...\n")
@@ -377,7 +386,8 @@ class OBDLoadingPanel(wx.Panel):
         while not connected:
             connected = self.c.is_connected()
             self.textCtrl.Clear()
-            self.textCtrl.AddText(" Trying to connect ..." + time.asctime())
+            #self.textCtrl.AddText(" Trying to connect ..." + time.asctime() + " " + connected)
+            self.textCtrl.AddText("Where will this show up???")
             if connected: 
                 break
 
@@ -556,7 +566,7 @@ class OBDApp(wx.App):
         # Main frame                                           
         frame = OBDFrame()
         self.SetTopWindow(frame)
-        frame.ShowFullScreen(True)
+        #frame.ShowFullScreen(True)
         frame.Show(True)
         #frame.showLoadingPanel()
 
